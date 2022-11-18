@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, Json
 import json
 import io
 import base64
+from PIL import PngImagePlugin
 
 sampler_to_index = lambda name: next(filter(lambda row: name.lower() == row[1].name.lower(), enumerate(all_samplers)), None)
 
@@ -45,9 +46,15 @@ class Api:
             processed = process_images(p)
         
         b64images = []
-        for i in processed.images:
+        for img in processed.images:
             buffer = io.BytesIO()
-            i.save(buffer, format="png")
+            pnginfo = PngImagePlugin.PngInfo()
+            for k, v in img.info.items():
+              pnginfo.add_text(k, v)
+            img.save(
+              buffer, format="png",
+              pnginfo=pnginfo
+            )
             b64images.append(base64.b64encode(buffer.getvalue()))
 
         return TextToImageResponse(images=b64images, parameters=json.dumps(vars(txt2imgreq)), info=json.dumps(processed.info))
